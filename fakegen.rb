@@ -1,10 +1,11 @@
-
 # fakegen.rb
 # A simple code generator to create some C macros for defining test fake functions
 
+require_relative './pp_iterators.rb'
 
 $cpp_output = true
-$MAX_ARGS = 20
+$MAX_ARGS = 20 # Max faked function argument count
+$MAX_ITER = 64 # Max args for iteration and arg counting macros
 $DEFAULT_ARG_HISTORY = 50
 $MAX_CALL_HISTORY = 50
 
@@ -29,14 +30,11 @@ def output_constants
 end
 
 
-
-
-
 # ------  Helper macros to use internally ------ #
 def output_internal_helper_macros
   putd "/* -- INTERNAL HELPER MACROS -- */"
 
-  define_return_sequence_helper
+  define_return_sequence_helpers
   define_custom_fake_sequence_helper
   define_reset_fake_macro
   define_declare_arg_helper
@@ -53,17 +51,37 @@ def output_internal_helper_macros
   define_return_fake_result_helper
   define_extern_c_helper
   define_reset_fake_helper
+  define_fake_helpers
+  define_call_verification_helpers
 
   putd "/* -- END INTERNAL HELPER MACROS -- */"
   puts
 end
 
-def define_return_sequence_helper
+def define_return_sequence_helpers
   putd_backslash "#define SET_RETURN_SEQ(FUNCNAME, ARRAY_POINTER, ARRAY_LEN)"
   indent {
     putd_backslash "FUNCNAME##_fake.return_val_seq = ARRAY_POINTER;"
     putd "FUNCNAME##_fake.return_val_seq_len = ARRAY_LEN;"
   }
+  # The elaborate construction of SET_RETURN allows it to be prefixed with `static`
+  # in case you want to initialise a sequence outside the test body (e.g. in a fixture
+  # setup method or whatever)
+  putd <<-'EOT'
+
+/* FFF_RETURN (begin) */
+#define FFF_RETURN(...)                                             \
+  _FFF_SEQ_DEF(__VA_ARGS__); if(PP_NARG(__VA_ARGS__) == 2) {FFF_RETURN_VAL(__VA_ARGS__, 0);} else {_FFF_RETURN_SEQ(HEAD(__VA_ARGS__));}
+#define _FFF_RET_TYPE(FN) __typeof__(FFF_RET(FN))
+#define _FFF_SEQ(FN) CAT(FN, __LINE__)
+#define _FFF_SEQ_DEF(FN, ...) _FFF_RET_TYPE(FN) _FFF_SEQ(FN)[] = {__VA_ARGS__}
+#define _FFF_SEQ_LEN(FN) (sizeof(_FFF_SEQ(FN))/sizeof(FFF_RET(FN)))
+#define FFF_RETURN_VAL(FN, ...) FFF_RET(FN) = HEAD(__VA_ARGS__)
+#define _FFF_RETURN_SEQ(FN) SET_RETURN_SEQ(FN, _FFF_SEQ(FN), _FFF_SEQ_LEN(FN)); \
+    _FFF_ASSERT_TRUE_MSG(FFF(FN).return_val_seq_len>0, "No return values specified")
+/* FFF_RETURN (end) */
+
+EOT
 end
 
 def define_custom_fake_sequence_helper
@@ -159,9 +177,9 @@ def define_value_function_variables_helper
   puts
   putd_backslash "#define DECLARE_VALUE_FUNCTION_VARIABLES(RETURN_TYPE)"
   indent {
-    putd_backslash "RETURN_TYPE return_val;" 
-    putd_backslash "int return_val_seq_len;" 
-    putd_backslash "int return_val_seq_idx;" 
+    putd_backslash "RETURN_TYPE return_val;"
+    putd_backslash "int return_val_seq_len;"
+    putd_backslash "int return_val_seq_idx;"
     putd_backslash "RETURN_TYPE * return_val_seq;"
   }
 end
@@ -208,8 +226,8 @@ def define_extern_c_helper
   puts
   putd "#ifdef __cplusplus"
   indent {
-    putd "#define FFF_EXTERN_C extern \"C\"{" 
-    putd "#define FFF_END_EXTERN_C } " 
+    putd "#define FFF_EXTERN_C extern \"C\"{"
+    putd "#define FFF_END_EXTERN_C } "
   }
   putd "#else  /* ansi c */"
   indent {
@@ -230,6 +248,39 @@ def define_reset_fake_helper
     }
     putd "}"
   }
+end
+
+def define_fake_helpers
+  putd <<-EOH
+#define FFF(FN) FN##_fake
+#define FFF_CALLS(FN) FFF(FN).call_count
+#define FFF_LAST_ARG_VAL(FN, ARG_IDX) FFF(FN).arg##ARG_IDX##_val
+#define FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX) FFF(FN).arg##ARG_IDX##_history[CALL_IDX-1]
+#define FFF_RET(FN) FFF(FN).return_val
+  EOH
+end
+
+def define_call_verification_helpers
+  putd <<-EOH
+#define _FFF_VERIFY_ARG(FN, VAL, ARG_IDX) VAL == FFF_LAST_ARG_VAL(FN, ARG_IDX)
+#define _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) (VAL == FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX))
+#define _FFF_AND_VERIFY_NTH_CALL_ARG(FN, CALL_IDX, VAL, ARG_IDX) && _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX)
+#define _FFF_VERIFY_NTH_CALL(FN, CALL_IDX, ...)                         \
+  ( (CALL_IDX > 0) && (CALL_IDX <= FFF_CALLS(FN)) PP_2PAR_EACH_IDX(_FFF_AND_VERIFY_NTH_CALL_ARG, FN, CALL_IDX, __VA_ARGS__) )
+
+//This uses GCC compound statement expression:
+//https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+#define _FFF_VERIFY_ANY_CALL(FN, ...) ({                              \
+      int verified = 0;                                               \
+      int call_idx = FFF_CALLS(FN);                                  \
+      while(call_idx && !verified) {                                  \
+        verified |= _FFF_VERIFY_NTH_CALL(FN, call_idx, __VA_ARGS__);  \
+        call_idx--;                                                   \
+      }                                                               \
+      verified;                                                       \
+    })
+
+  EOH
 end
 # ------  End Helper macros ------ #
 
@@ -254,7 +305,7 @@ def popd
 end
 
 def indent
-  pushd 
+  pushd
     yield
   popd
 end
@@ -275,7 +326,7 @@ def output_macro(arg_count, has_varargs, is_value_function)
       output_variables(saved_arg_count, has_varargs, is_value_function)
     }
   }
-  
+
   puts
   output_macro_header(define_macro_name, saved_arg_count, has_varargs, return_type)
   indent {
@@ -289,9 +340,9 @@ def output_macro(arg_count, has_varargs, is_value_function)
       putd_backslash "DEFINE_RESET_FUNCTION(FUNCNAME)"
     }
   }
-  
+
   puts
-  
+
   output_macro_header(fake_macro_name, saved_arg_count, has_varargs, return_type)
   indent {
     putd macro_signature_for(declare_macro_name, saved_arg_count, has_varargs, return_type)
@@ -329,7 +380,7 @@ end
 
 def output_variables(arg_count, has_varargs, is_value_function)
   in_struct{
-    arg_count.times { |argN| 
+    arg_count.times { |argN|
       putd_backslash "DECLARE_ARG(ARG#{argN}_TYPE, #{argN}, FUNCNAME)"
     }
     putd_backslash "DECLARE_ALL_FUNC_COMMON"
@@ -472,14 +523,14 @@ def define_fff_globals
   indent {
     putd_backslash "if(fff.call_history_idx < FFF_CALL_HISTORY_LEN)"
     indent {
-		putd "fff.call_history[fff.call_history_idx++] = (fff_function_t)function;"
+    putd "fff.call_history[fff.call_history_idx++] = (fff_function_t)function;"
     }
   }
 end
 
 def extern_c
   putd_backslash "FFF_EXTERN_C"
-  indent { 
+  indent {
     yield
   }
   putd_backslash "FFF_END_EXTERN_C"
@@ -509,8 +560,8 @@ def msvc_expand_macro_fix
     putd "#define EXPAND(x) x"
 end
 
-def generate_arg_sequence(args, prefix, do_reverse, joinstr)
- fmap = (0..args).flat_map {|i| [prefix + i.to_s]}
+def generate_arg_sequence(args, prefix, do_reverse, joinstr, first_idx = 0)
+ fmap = (first_idx..args).flat_map {|i| [prefix + i.to_s]}
  if do_reverse then fmap.reverse.join(joinstr) else fmap.join(", ") end
 end
 
@@ -532,33 +583,25 @@ def counting_macro_instance(type, vararg = :non_vararg, prefix = "")
 end
 
 def output_macro_counting_shortcuts
-  msvc_expand_macro_fix
+  ppiter = PPIterators.new($MAX_ITER, use_gcc_extensions: true)
   putd <<-MACRO_COUNTING
 
-#define PP_NARG_MINUS2(...) \
-    EXPAND(PP_NARG_MINUS2_(__VA_ARGS__, PP_RSEQ_N_MINUS2()))
+#ifndef PP_NARG
+#{ppiter.narg_common}
+#{ppiter.narg}
+#endif
 
-#define PP_NARG_MINUS2_(...) \
-    EXPAND(PP_ARG_MINUS2_N(__VA_ARGS__))
+#{ppiter.narg_minus(1)}
 
-#define PP_ARG_MINUS2_N(returnVal, #{generate_arg_sequence($MAX_ARGS, '_', false, ", ")}, N, ...)   N
+#{ppiter.narg_minus(2)}
 
-#define PP_RSEQ_N_MINUS2() \
-    #{generate_arg_sequence($MAX_ARGS, '', true, ',')}
+#ifndef PP_1PAR_EACH_IDX
+#{ppiter.parameterised_each_with_index(1)}
+#endif
 
-
-#define PP_NARG_MINUS1(...) \
-    EXPAND(PP_NARG_MINUS1_(__VA_ARGS__, PP_RSEQ_N_MINUS1()))
-
-#define PP_NARG_MINUS1_(...) \
-    EXPAND(PP_ARG_MINUS1_N(__VA_ARGS__))
-
-#define PP_ARG_MINUS1_N(#{generate_arg_sequence($MAX_ARGS, '_', false, ", ")}, N, ...)   N
-
-#define PP_RSEQ_N_MINUS1() \
-    #{generate_arg_sequence($MAX_ARGS, '', true, ',')}
-
-
+#ifndef PP_2PAR_EACH_IDX
+#{ppiter.parameterised_each_with_index(2)}
+#endif
 
 /* DECLARE AND DEFINE FAKE FUNCTIONS - PLACE IN TEST FILES */
 
@@ -584,6 +627,55 @@ def output_macro_counting_shortcuts
   MACRO_COUNTING
 end
 
+def output_assertions
+  putd <<-'EOA'
+/* ASSERTIONS (Public API) */
+
+#define FFF_ASSERT_CALLS(FN, COUNT) _FFF_ASSERT_EQ_MSG(COUNT, FFF_CALLS(FN), #FN " called incorrect number of times")
+
+#define FFF_ASSERT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 1);
+
+#define FFF_ASSERT_NOT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 0);
+
+#define FFF_ASSERT(FN, ...) \
+  FFF_ASSERT_CALLS(FN, 1); \
+  PP_1PAR_EACH_IDX(_FFF_ASSERT_ARG, FN, __VA_ARGS__)
+
+#define FFF_ASSERT_NTH(FN, CALL_IDX, ...) \
+  _FFF_ASSERT_TRUE_MSG(CALL_IDX > 0, "Invalid call index -- expected >0, got " #CALL_IDX); \
+  _FFF_ASSERT_TRUE_MSG(FFF_CALLS(FN) >= CALL_IDX, #FN " not called " #CALL_IDX " times"); \
+  PP_2PAR_EACH_IDX(_FFF_ASSERT_HISTORICAL_ARG, FN, CALL_IDX, __VA_ARGS__)
+
+#define FFF_ASSERT_LAST(FN, ...) FFF_ASSERT_NTH(FN, FFF_CALLS(FN), __VA_ARGS__)
+
+#define FFF_ASSERT_ANY(FN, ...) _FFF_ASSERT_TRUE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "No calls made to '"#FN"("#__VA_ARGS__")'")
+
+#define FFF_ASSERT_NONE(FN, ...)  _FFF_ASSERT_FALSE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "At least one call made to '"#FN"("#__VA_ARGS__")'")
+
+/* ASSERTIONS (Internal) */
+
+#ifndef _FFF_ASSERT_EQ_MSG
+#include <assert.h>
+#include <stdio.h>
+#define _FFF_ASSERT_EQ_MSG(expected, actual, message) do { \
+        if(expected!=actual) {printf(message);} \
+        assert(expected==actual); \
+} while(0)
+#endif
+
+#ifndef _FFF_ASSERT_EQ
+#define _FFF_ASSERT_EQ(expected, actual) _FFF_ASSERT_EQ_MSG(expected, actual, "Expected " #expected " / Got " #actual)
+#endif
+
+#define _FFF_ASSERT_TRUE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG(((COND)>0), 1, MSG)
+#define _FFF_ASSERT_FALSE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG((COND), 0, MSG)
+
+#define _FFF_ASSERT_ARG(FN, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG(VAL, FFF_LAST_ARG_VAL(FN, ARG_IDX), #FN" parameter value mismatch at ARG"#ARG_IDX);
+
+#define _FFF_ASSERT_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG(VAL, FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX),  #FN", call "#CALL_IDX": value mismatch for arg"#ARG_IDX);
+EOA
+end
+
 def output_c_and_cpp
 
   include_guard {
@@ -592,6 +684,7 @@ def output_c_and_cpp
     output_internal_helper_macros
     yield
     output_macro_counting_shortcuts
+    output_assertions
   }
 end
 
