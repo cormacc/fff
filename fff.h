@@ -6470,119 +6470,406 @@ FFF_END_EXTERN_C
     DECLARE_FAKE_VALUE_FUNC20_VARARG(RETURN_TYPE, FUNCNAME, ARG0_TYPE, ARG1_TYPE, ARG2_TYPE, ARG3_TYPE, ARG4_TYPE, ARG5_TYPE, ARG6_TYPE, ARG7_TYPE, ARG8_TYPE, ARG9_TYPE, ARG10_TYPE, ARG11_TYPE, ARG12_TYPE, ARG13_TYPE, ARG14_TYPE, ARG15_TYPE, ARG16_TYPE, ARG17_TYPE, ARG18_TYPE, ...) \
     DEFINE_FAKE_VALUE_FUNC20_VARARG(RETURN_TYPE, FUNCNAME, ARG0_TYPE, ARG1_TYPE, ARG2_TYPE, ARG3_TYPE, ARG4_TYPE, ARG5_TYPE, ARG6_TYPE, ARG7_TYPE, ARG8_TYPE, ARG9_TYPE, ARG10_TYPE, ARG11_TYPE, ARG12_TYPE, ARG13_TYPE, ARG14_TYPE, ARG15_TYPE, ARG16_TYPE, ARG17_TYPE, ARG18_TYPE, ...) \
 
-/* MSVC expand macro fix */
-#define EXPAND(x) x
 
-#define PP_NARG_MINUS2(...)   EXPAND(PP_NARG_MINUS2_(__VA_ARGS__, PP_RSEQ_N_MINUS2()))
+//Argument counting (first, so that a missing __VA_OPT__ is reported before anything else)
+#ifndef PP_UTIL_H
+  #define PP_UTIL_H
+  #define PP_SEQ_N() 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63
+  #define PP_RSEQ_N() 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+  #define PP_I_THIRD_ARG(a, b, c, ...) c
+  #define PP_I_VA_OPT_PROBE(...) PP_I_THIRD_ARG(__VA_OPT__(,), 1, 0, )
+  #define PP_HAS_VA_OPT PP_I_VA_OPT_PROBE(?)
+#endif //PP_UTIL_H
+#if !PP_HAS_VA_OPT
+  #error "pp_iter.h requires a preprocessor with __VA_OPT__ support (for MSVC, use /Zc:preprocessor)"
+#endif
 
-#define PP_NARG_MINUS2_(...)   EXPAND(PP_ARG_MINUS2_N(__VA_ARGS__))
+#ifndef PP_NARG_H
+  #define PP_NARG_H
+  #define PP_ARG_N(...) PP_I_ARG_N(__VA_ARGS__)
+  #define PP_NARG(...) PP_ARG_N(PP_I_PLACEHOLDER __VA_OPT__(,) __VA_ARGS__, PP_RSEQ_N())
+  #define PP_I_ARG_N(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a60, a61, a62, a63, a64, N, ...) N
+#endif //PP_NARG_H
 
-#define PP_ARG_MINUS2_N(returnVal,  _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, N, ...)   N
 
-#define PP_RSEQ_N_MINUS2()   20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
+//Defer / evaluate macros
+#ifndef PP_DEFER_H
+  #define PP_DEFER_H
+  #define PP_NOP()
+  #define PP_DEFER(...) __VA_ARGS__ PP_NOP()
+  #define PP_DEFER2(...) __VA_ARGS__ PP_DEFER(PP_NOP) ()
+#endif //PP_DEFER_H
 
-#define PP_NARG_MINUS1(...)   EXPAND(PP_NARG_MINUS1_(__VA_ARGS__, PP_RSEQ_N_MINUS1()))
+#ifndef PP_EVAL_H
+  #define PP_EVAL_H
+  #define PP_EVAL(...) PP_I_EVAL_6(__VA_ARGS__)
+  #define PP_I_EVAL_1(...) __VA_ARGS__
+  #define PP_I_EVAL_2(...) PP_I_EVAL_1(PP_I_EVAL_1(__VA_ARGS__))
+  #define PP_I_EVAL_3(...) PP_I_EVAL_2(PP_I_EVAL_2(__VA_ARGS__))
+  #define PP_I_EVAL_4(...) PP_I_EVAL_3(PP_I_EVAL_3(__VA_ARGS__))
+  #define PP_I_EVAL_5(...) PP_I_EVAL_4(PP_I_EVAL_4(__VA_ARGS__))
+  #define PP_I_EVAL_6(...) PP_I_EVAL_5(PP_I_EVAL_5(__VA_ARGS__))
+#endif //PP_EVAL_H
 
-#define PP_NARG_MINUS1_(...)   EXPAND(PP_ARG_MINUS1_N(__VA_ARGS__))
 
-#define PP_ARG_MINUS1_N( _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, N, ...)   N
+//Token concatenation (tuple-aware)
+#ifndef PP_CAT_H
+  #define PP_CAT_H
+  // Defer the call to the PP_CAT so that we get the updated parameters first
+  #define PP_CAT(a, b) PP_I_CAT_EVAL ( PP_I_CAT_EXPAND_PARAMETERS(a, b) )
+  #define PP_I_CAT_EVAL(...) PP_I_CAT_HELPER __VA_ARGS__
 
-#define PP_RSEQ_N_MINUS1()   20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
+  // Find the result of testing whether a macro is enclosed or not
+  #define PP_I_CAT_EXPAND_PARAMETERS(a, b) (a, PP_I_CAT_PAREN_CHECK b, PP_I_DEFAULT, b )
+  #define PP_I_CAT_PAREN_CHECK(...) PP_I_EXPANDED, PP_I_ENCLOSED, (__VA_ARGS__) ) PP_EAT (
 
+  // Pattern match the result of testing if it is enclose or not
+  #define PP_I_CAT_HELPER(a, _, f, b) PP_I_CAT_HELPER_ ## f (a, b)
+  #define PP_I_CAT_HELPER_PP_I_ENCLOSED(a, b) a b
+  #define PP_I_CAT_HELPER_PP_I_DEFAULT(a, b) a ## b
+#endif //PP_CAT_H
+
+
+//Logical operations
+#ifndef PP_LOGIC_H
+  #define PP_LOGIC_H
+  //Usage: PP_IF(<condition>) (<then>, <else>)
+  #define  PP_IF(value) PP_CAT(PP_I_IF_, value)
+  #define PP_I_IF_1(true, ...) true
+  #define PP_I_IF_0(true, ...) __VA_ARGS__
+
+  #define PP_NOT(x) PP_MATCHER ( PP_CAT(PP_I_NOT_, x), 0 )
+  #define PP_I_NOT_0 PP_I_EXISTS(1)
+
+  //== Building blocks
+
+  //PP_MATCHER
+  #define PP_MATCHER(value, ...)   PP_IF ( PP_I_MATCH(PP_I_MATCH_FIND(value)) )       ( PP_I_MATCH_EXTRACT(value), __VA_ARGS__ )
+
+  #define PP_I_MATCH(x) PP_CAT(PP_I_MATCH_, x)
+  #define PP_I_MATCH_PP_I_EXISTS(...) 1
+  #define PP_I_MATCH_PP_I_UNMATCHED 0
+
+  #define PP_I_MATCH_FIND(x) PP_I_MATCH_RESULT_EXTRACT (  PP_I_MATCH_RESULT_FIND(x) )
+
+  /**
+   * Extract 2nd element of a match result in the format:
+   * (IGNORED, PP_I_EXISTS(DEFINED_VALUE)) or (IGNORED, PP_I_UNMATCHED)
+   * This is appended to PP_I_MATCH_ to convert result to a boolean,
+   */
+  #define PP_I_MATCH_RESULT_EXTRACT(x) PP_I_MATCH_RESULT_EXTRACT_HELPER  x
+  #define PP_I_MATCH_RESULT_EXTRACT_HELPER(match, return_value) return_value
+
+  /**
+   * PP_I_MATCH_RESULT_FIND( PP_I_EXISTS(bla) ) returns ( PP_I_EXPANDED, PP_I_EXISTS(bla) )
+   * PP_I_MATCH_RESULT_FIND( bla ) returns ( TEST_bla, PP_I_UNMATCHED)
+   */
+  #define PP_I_MATCH_RESULT_FIND(x) ( PP_CAT(PP_I_MATCH_RESULT_EXPAND_, x),  PP_I_UNMATCHED )
+  #define PP_I_MATCH_RESULT_EXPAND_PP_I_EXISTS(...) PP_I_EXPANDED, PP_I_EXISTS(__VA_ARGS__) ) PP_EAT (
+  #define PP_EAT(...)
+
+  //PP_I_MATCH_EXTRACT / PP_I_MATCH_EXTRACT_PP_I_EXISTS
+  #define PP_I_MATCH_EXTRACT(value) PP_CAT(PP_I_MATCH_EXTRACT_, value)
+  #define PP_I_MATCH_EXTRACT_PP_I_EXISTS(...) __VA_ARGS__
+#endif //PP_LOGIC_H
+
+
+//Lists (PP_HEAD, PP_TAIL, PP_IS_EMPTY etc.)
+#ifndef PP_LISTS_H
+  #define PP_LISTS_H
+  #define PP_HEAD(FIRST, ...) FIRST
+  #define PP_TAIL(FIRST, ...) __VA_ARGS__
+
+  #define PP_NOT_EMPTY(...) PP_NOT(PP_IS_EMPTY(__VA_ARGS__))
+  #define PP_IS_EMPTY(...) PP_NOT(PP_NARG(__VA_ARGS__))
+#endif //PP_LISTS_H
+
+
+//Tuples
+#ifndef PP_TUPLES_H
+  #define PP_TUPLES_H
+  #define PP_DEPAREN(...) PP_I_DEPAREN __VA_ARGS__
+  #define PP_I_DEPAREN(...) __VA_ARGS__
+
+  #define PP_IS_ENCLOSED(x, ...) PP_MATCHER ( PP_I_IS_ENCLOSED_TEST x, 0 )
+  #define PP_I_IS_ENCLOSED_TEST(...) PP_I_EXISTS(1)
+
+  #define PP_IF_ENCLOSED(...) PP_CAT(PP_I_IF_ENCLOSED_, PP_IS_ENCLOSED(__VA_ARGS__))
+  #define PP_I_IF_ENCLOSED_0(true, ...) __VA_ARGS__
+  #define PP_I_IF_ENCLOSED_1(true, ...) true
+  // This function will optionally remove parentheses around its arguments
+  // if there are any. Otherwise it will return normally
+  #define PP_OPT_DEPAREN(...)   PP_IF_ENCLOSED (__VA_ARGS__) ( PP_DEPAREN(__VA_ARGS__), __VA_ARGS__ )
+#endif //PP_TUPLES_H
+
+
+//PP_EACH
+#ifndef PP_EACH_H
+  #define PP_EACH_H
+  #define PP_EACH(TF, ...) \
+    PP_EVAL(PP_I_EACH_DEFER(TF, __VA_ARGS__))
+
+  #define PP_I_EACH_DEFER(TF, ...) \
+    PP_IF ( PP_NOT_EMPTY( __VA_ARGS__ )  ) \
+    ( \
+      PP_DEFER(TF) (PP_OPT_DEPAREN(PP_HEAD(__VA_ARGS__))) \
+      PP_DEFER2 ( PP_I_EACH_INDIRECT ) () (TF, PP_TAIL(__VA_ARGS__)) \
+    )
+
+  //This indirection along with the PP_DEFER2 and PP_EVAL macros allows the recursive implementation of PP_I_EACH_DEFER
+  #define PP_I_EACH_INDIRECT() PP_I_EACH_DEFER
+#endif //PP_EACH_H
+
+
+//PP_EACH_IDX
+#ifndef PP_EACH_IDX_H
+  #define PP_EACH_IDX_H
+  #define PP_EACH_IDX(TF, ...) PP_EVAL(PP_I_EACH_IDX_DEFER(TF, (PP_SEQ_N()), __VA_ARGS__))
+
+  #define PP_I_EACH_IDX_DEFER(TF, VA_INDICES, ...) \
+      PP_IF ( PP_NOT_EMPTY( __VA_ARGS__ )  ) \
+      ( \
+        PP_DEFER2(TF) (PP_OPT_DEPAREN(PP_HEAD(__VA_ARGS__)), PP_DEFER(PP_HEAD)(PP_DEPAREN(VA_INDICES))) \
+        PP_DEFER2 ( PP_I_EACH_IDX_INDIRECT ) () (TF, (PP_TAIL VA_INDICES), PP_TAIL(__VA_ARGS__)) \
+      )
+
+    #define PP_I_EACH_IDX_INDIRECT() PP_I_EACH_IDX_DEFER
+#endif //PP_EACH_IDX_H
+
+
+//PP_PAR_EACH_IDX
+#ifndef PP_PAR_EACH_IDX_H
+  #define PP_PAR_EACH_IDX_H
+  #define PP_PAR_EACH_IDX(TF, FARGS, ...) PP_EVAL(PP_I_PAR_EACH_IDX_DEFER(TF, FARGS, (PP_SEQ_N()), __VA_ARGS__))
+
+  #define PP_I_PAR_EACH_IDX_DEFER(TF, FARGS, VA_INDICES, ...)                         \
+    PP_IF ( PP_NOT_EMPTY( __VA_ARGS__ )  )                                      \
+    (                                                                     \
+      PP_DEFER2(TF) (PP_OPT_DEPAREN(FARGS), PP_OPT_DEPAREN(PP_HEAD(__VA_ARGS__)), PP_DEFER(PP_HEAD)(PP_DEPAREN(VA_INDICES))) \
+      PP_DEFER2 ( PP_I_PAR_EACH_IDX_INDIRECT ) () (TF, FARGS, (PP_TAIL VA_INDICES), PP_TAIL(__VA_ARGS__)) \
+    )
+
+  #define PP_I_PAR_EACH_IDX_INDIRECT() PP_I_PAR_EACH_IDX_DEFER
+#endif //PP_PAR_EACH_IDX_H
+
+
+//PP_COMMA
+#ifndef PP_COMMA_H
+  #define PP_COMMA_H
+  #define PP_COMMA() ,
+#endif //PP_COMMA_H
+
+
+//PP_COMMA_EACH
+#ifndef PP_COMMA_EACH_H
+  #define PP_COMMA_EACH_H
+  #define PP_COMMA_EACH(TF, ...) \
+    PP_EVAL(PP_I_COMMA_EACH_DEFER(TF, __VA_ARGS__))
+
+  #define PP_I_COMMA_EACH_DEFER(TF, ...) \
+    PP_IF ( PP_NOT_EMPTY( __VA_ARGS__ )  ) \
+    ( \
+      PP_DEFER(TF) (PP_OPT_DEPAREN(PP_HEAD(__VA_ARGS__))) \
+      PP_IF ( PP_NOT_EMPTY(PP_TAIL(__VA_ARGS__))) (PP_COMMA()) \
+      PP_DEFER2 ( PP_I_COMMA_EACH_INDIRECT ) () (TF, PP_TAIL(__VA_ARGS__)) \
+    )
+
+  //This indirection along with the PP_DEFER2 and PP_EVAL macros allows the recursive implementation of PP_I_COMMA_EACH_DEFER
+  #define PP_I_COMMA_EACH_INDIRECT() PP_I_COMMA_EACH_DEFER
+#endif //PP_COMMA_EACH_H
+
+
+
+#ifndef PP_NARG_MINUS2_H
+  #define PP_NARG_MINUS2_H
+  #define PP_ARG_MINUS2_N(...) PP_I_ARG_MINUS2_N(__VA_ARGS__)
+  #define PP_NARG_MINUS2(...) PP_ARG_MINUS2_N(PP_I_PLACEHOLDER __VA_OPT__(,) __VA_ARGS__, PP_RSEQ_N())
+  #define PP_I_ARG_MINUS2_N(m1, m0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a60, a61, a62, a63, a64, N, ...) N
+#endif //PP_NARG_MINUS2_H
+
+#ifndef PP_NARG_MINUS1_H
+  #define PP_NARG_MINUS1_H
+  #define PP_ARG_MINUS1_N(...) PP_I_ARG_MINUS1_N(__VA_ARGS__)
+  #define PP_NARG_MINUS1(...) PP_ARG_MINUS1_N(PP_I_PLACEHOLDER __VA_OPT__(,) __VA_ARGS__, PP_RSEQ_N())
+  #define PP_I_ARG_MINUS1_N(m0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a60, a61, a62, a63, a64, N, ...) N
+#endif //PP_NARG_MINUS1_H
 
 
 /* DECLARE AND DEFINE FAKE FUNCTIONS - PLACE IN TEST FILES */
 
-#define FAKE_VALUE_FUNC(...)     EXPAND(FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define FAKE_VALUE_FUNC(...)     FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
-#define FUNC_VALUE_(N,...)     EXPAND(FUNC_VALUE_N(N,__VA_ARGS__))
+#define FUNC_VALUE_(N,...)     FUNC_VALUE_N(N,__VA_ARGS__)
 
-#define FUNC_VALUE_N(N,...)     EXPAND(FAKE_VALUE_FUNC ## N(__VA_ARGS__))
-
-
-#define FAKE_VOID_FUNC(...)     EXPAND(FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
-
-#define FUNC_VOID_(N,...)     EXPAND(FUNC_VOID_N(N,__VA_ARGS__))
-
-#define FUNC_VOID_N(N,...)     EXPAND(FAKE_VOID_FUNC ## N(__VA_ARGS__))
+#define FUNC_VALUE_N(N,...)     FAKE_VALUE_FUNC ## N(__VA_ARGS__)
 
 
-#define FAKE_VALUE_FUNC_VARARG(...)     EXPAND(FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define FAKE_VOID_FUNC(...)     FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
 
-#define FUNC_VALUE_VARARG_(N,...)     EXPAND(FUNC_VALUE_VARARG_N(N,__VA_ARGS__))
+#define FUNC_VOID_(N,...)     FUNC_VOID_N(N,__VA_ARGS__)
 
-#define FUNC_VALUE_VARARG_N(N,...)     EXPAND(FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__))
+#define FUNC_VOID_N(N,...)     FAKE_VOID_FUNC ## N(__VA_ARGS__)
 
 
-#define FAKE_VOID_FUNC_VARARG(...)     EXPAND(FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
+#define FAKE_VALUE_FUNC_VARARG(...)     FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
-#define FUNC_VOID_VARARG_(N,...)     EXPAND(FUNC_VOID_VARARG_N(N,__VA_ARGS__))
+#define FUNC_VALUE_VARARG_(N,...)     FUNC_VALUE_VARARG_N(N,__VA_ARGS__)
 
-#define FUNC_VOID_VARARG_N(N,...)     EXPAND(FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__))
+#define FUNC_VALUE_VARARG_N(N,...)     FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__)
+
+
+#define FAKE_VOID_FUNC_VARARG(...)     FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
+
+#define FUNC_VOID_VARARG_(N,...)     FUNC_VOID_VARARG_N(N,__VA_ARGS__)
+
+#define FUNC_VOID_VARARG_N(N,...)     FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__)
 
 
 
 /* DECLARE FAKE FUNCTIONS - PLACE IN HEADER FILES */
 
-#define DECLARE_FAKE_VALUE_FUNC(...)     EXPAND(DECLARE_FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define DECLARE_FAKE_VALUE_FUNC(...)     DECLARE_FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
-#define DECLARE_FUNC_VALUE_(N,...)     EXPAND(DECLARE_FUNC_VALUE_N(N,__VA_ARGS__))
+#define DECLARE_FUNC_VALUE_(N,...)     DECLARE_FUNC_VALUE_N(N,__VA_ARGS__)
 
-#define DECLARE_FUNC_VALUE_N(N,...)     EXPAND(DECLARE_FAKE_VALUE_FUNC ## N(__VA_ARGS__))
-
-
-#define DECLARE_FAKE_VOID_FUNC(...)     EXPAND(DECLARE_FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
-
-#define DECLARE_FUNC_VOID_(N,...)     EXPAND(DECLARE_FUNC_VOID_N(N,__VA_ARGS__))
-
-#define DECLARE_FUNC_VOID_N(N,...)     EXPAND(DECLARE_FAKE_VOID_FUNC ## N(__VA_ARGS__))
+#define DECLARE_FUNC_VALUE_N(N,...)     DECLARE_FAKE_VALUE_FUNC ## N(__VA_ARGS__)
 
 
-#define DECLARE_FAKE_VALUE_FUNC_VARARG(...)     EXPAND(DECLARE_FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define DECLARE_FAKE_VOID_FUNC(...)     DECLARE_FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
 
-#define DECLARE_FUNC_VALUE_VARARG_(N,...)     EXPAND(DECLARE_FUNC_VALUE_VARARG_N(N,__VA_ARGS__))
+#define DECLARE_FUNC_VOID_(N,...)     DECLARE_FUNC_VOID_N(N,__VA_ARGS__)
 
-#define DECLARE_FUNC_VALUE_VARARG_N(N,...)     EXPAND(DECLARE_FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__))
+#define DECLARE_FUNC_VOID_N(N,...)     DECLARE_FAKE_VOID_FUNC ## N(__VA_ARGS__)
 
 
-#define DECLARE_FAKE_VOID_FUNC_VARARG(...)     EXPAND(DECLARE_FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
+#define DECLARE_FAKE_VALUE_FUNC_VARARG(...)     DECLARE_FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
-#define DECLARE_FUNC_VOID_VARARG_(N,...)     EXPAND(DECLARE_FUNC_VOID_VARARG_N(N,__VA_ARGS__))
+#define DECLARE_FUNC_VALUE_VARARG_(N,...)     DECLARE_FUNC_VALUE_VARARG_N(N,__VA_ARGS__)
 
-#define DECLARE_FUNC_VOID_VARARG_N(N,...)     EXPAND(DECLARE_FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__))
+#define DECLARE_FUNC_VALUE_VARARG_N(N,...)     DECLARE_FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__)
+
+
+#define DECLARE_FAKE_VOID_FUNC_VARARG(...)     DECLARE_FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
+
+#define DECLARE_FUNC_VOID_VARARG_(N,...)     DECLARE_FUNC_VOID_VARARG_N(N,__VA_ARGS__)
+
+#define DECLARE_FUNC_VOID_VARARG_N(N,...)     DECLARE_FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__)
 
 
 
 /* DEFINE FAKE FUNCTIONS - PLACE IN SOURCE FILES */
 
-#define DEFINE_FAKE_VALUE_FUNC(...)     EXPAND(DEFINE_FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define DEFINE_FAKE_VALUE_FUNC(...)     DEFINE_FUNC_VALUE_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
-#define DEFINE_FUNC_VALUE_(N,...)     EXPAND(DEFINE_FUNC_VALUE_N(N,__VA_ARGS__))
+#define DEFINE_FUNC_VALUE_(N,...)     DEFINE_FUNC_VALUE_N(N,__VA_ARGS__)
 
-#define DEFINE_FUNC_VALUE_N(N,...)     EXPAND(DEFINE_FAKE_VALUE_FUNC ## N(__VA_ARGS__))
-
-
-#define DEFINE_FAKE_VOID_FUNC(...)     EXPAND(DEFINE_FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
-
-#define DEFINE_FUNC_VOID_(N,...)     EXPAND(DEFINE_FUNC_VOID_N(N,__VA_ARGS__))
-
-#define DEFINE_FUNC_VOID_N(N,...)     EXPAND(DEFINE_FAKE_VOID_FUNC ## N(__VA_ARGS__))
+#define DEFINE_FUNC_VALUE_N(N,...)     DEFINE_FAKE_VALUE_FUNC ## N(__VA_ARGS__)
 
 
-#define DEFINE_FAKE_VALUE_FUNC_VARARG(...)     EXPAND(DEFINE_FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__))
+#define DEFINE_FAKE_VOID_FUNC(...)     DEFINE_FUNC_VOID_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
 
-#define DEFINE_FUNC_VALUE_VARARG_(N,...)     EXPAND(DEFINE_FUNC_VALUE_VARARG_N(N,__VA_ARGS__))
+#define DEFINE_FUNC_VOID_(N,...)     DEFINE_FUNC_VOID_N(N,__VA_ARGS__)
 
-#define DEFINE_FUNC_VALUE_VARARG_N(N,...)     EXPAND(DEFINE_FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__))
-
-
-#define DEFINE_FAKE_VOID_FUNC_VARARG(...)     EXPAND(DEFINE_FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__))
-
-#define DEFINE_FUNC_VOID_VARARG_(N,...)     EXPAND(DEFINE_FUNC_VOID_VARARG_N(N,__VA_ARGS__))
-
-#define DEFINE_FUNC_VOID_VARARG_N(N,...)     EXPAND(DEFINE_FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__))
+#define DEFINE_FUNC_VOID_N(N,...)     DEFINE_FAKE_VOID_FUNC ## N(__VA_ARGS__)
 
 
+#define DEFINE_FAKE_VALUE_FUNC_VARARG(...)     DEFINE_FUNC_VALUE_VARARG_(PP_NARG_MINUS2(__VA_ARGS__), __VA_ARGS__)
 
+#define DEFINE_FUNC_VALUE_VARARG_(N,...)     DEFINE_FUNC_VALUE_VARARG_N(N,__VA_ARGS__)
+
+#define DEFINE_FUNC_VALUE_VARARG_N(N,...)     DEFINE_FAKE_VALUE_FUNC ## N ## _VARARG(__VA_ARGS__)
+
+
+#define DEFINE_FAKE_VOID_FUNC_VARARG(...)     DEFINE_FUNC_VOID_VARARG_(PP_NARG_MINUS1(__VA_ARGS__), __VA_ARGS__)
+
+#define DEFINE_FUNC_VOID_VARARG_(N,...)     DEFINE_FUNC_VOID_VARARG_N(N,__VA_ARGS__)
+
+#define DEFINE_FUNC_VOID_VARARG_N(N,...)     DEFINE_FAKE_VOID_FUNC ## N ## _VARARG(__VA_ARGS__)
+
+
+
+/* -- VARIADIC EXTENSIONS -- */
+
+/* Accessors (Public API) */
+#define FFF(FN) FN##_fake
+#define FFF_CALLS(FN) FFF(FN).call_count
+#define FFF_LAST_ARG_VAL(FN, ARG_IDX) FFF(FN).arg##ARG_IDX##_val
+#define FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX) FFF(FN).arg##ARG_IDX##_history[CALL_IDX-1]
+#define FFF_RET(FN) FFF(FN).return_val
+
+/* Assertion hook: define _FFF_ASSERT_EQ_MSG before you include fff.h to report through your test framework */
+#ifndef _FFF_ASSERT_EQ_MSG
+#include <assert.h>
+#include <stdio.h>
+#define _FFF_ASSERT_EQ_MSG(expected, actual, message) do { \
+        if((expected)!=(actual)) {printf("%s\n", message);} \
+        assert((expected)==(actual)); \
+} while(0)
+#endif
+
+#ifndef _FFF_ASSERT_EQ
+#define _FFF_ASSERT_EQ(expected, actual) _FFF_ASSERT_EQ_MSG(expected, actual, "Expected " #expected " / Got " #actual)
+#endif
+
+/* The ternary gives int operands, so C needs no <stdbool.h> and MSVC gives no bool/int warning */
+#define _FFF_ASSERT_TRUE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG(((COND) ? 1 : 0), 1, MSG)
+#define _FFF_ASSERT_FALSE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG(((COND) ? 1 : 0), 0, MSG)
+
+/* Call count assertions (Public API) */
+#define FFF_ASSERT_CALLS(FN, COUNT) _FFF_ASSERT_EQ_MSG((unsigned int)(COUNT), FFF_CALLS(FN), #FN " called incorrect number of times")
+#define FFF_ASSERT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 1);
+#define FFF_ASSERT_NOT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 0);
+
+/* FFF_RETURN (Public API). It needs typeof (GCC, Clang) or decltype (C++). */
+#define FFF_RETURN(...)                                             \
+  _FFF_SEQ_DEF(__VA_ARGS__); if(PP_NARG(__VA_ARGS__) == 2) {FFF_RETURN_VAL(__VA_ARGS__, 0);} else {_FFF_RETURN_SEQ(PP_HEAD(__VA_ARGS__));}
+#ifdef _MSC_VER
+#define _FFF_RET_TYPE(FN) decltype(FFF_RET(FN))
+#else
+#define _FFF_RET_TYPE(FN) __typeof__(FFF_RET(FN))
+#endif
+#define _FFF_SEQ(FN) PP_CAT(FN, __LINE__)
+#define _FFF_SEQ_DEF(FN, ...) _FFF_RET_TYPE(FN) _FFF_SEQ(FN)[] = {__VA_ARGS__}
+#define _FFF_SEQ_LEN(FN) (sizeof(_FFF_SEQ(FN))/sizeof(FFF_RET(FN)))
+#define FFF_RETURN_VAL(FN, ...) FFF_RET(FN) = PP_HEAD(__VA_ARGS__)
+#define _FFF_RETURN_SEQ(FN) SET_RETURN_SEQ(FN, _FFF_SEQ(FN), _FFF_SEQ_LEN(FN)); \
+    _FFF_ASSERT_TRUE_MSG(FFF(FN).return_val_seq_len>0, "No return values specified")
+
+/* Argument assertions (Public API) */
+#define FFF_ASSERT(FN, ...) \
+  FFF_ASSERT_CALLS(FN, 1); \
+  PP_PAR_EACH_IDX(_FFF_ASSERT_ARG, (FN), __VA_ARGS__)
+
+#define FFF_ASSERT_NTH(FN, CALL_IDX, ...) \
+  _FFF_ASSERT_TRUE_MSG(CALL_IDX>0, "Invalid call index -- expected >0, got " #CALL_IDX); \
+  _FFF_ASSERT_TRUE_MSG(FFF_CALLS(FN) >= (unsigned int)(CALL_IDX), #FN " not called " #CALL_IDX " times"); \
+  PP_PAR_EACH_IDX(_FFF_ASSERT_HISTORICAL_ARG, (FN, CALL_IDX), __VA_ARGS__)
+
+#define FFF_ASSERT_LAST(FN, ...) FFF_ASSERT_NTH(FN, FFF_CALLS(FN), __VA_ARGS__)
+
+/* FFF_ASSERT_ANY and FFF_ASSERT_NONE use a GCC statement expression (GCC, Clang) */
+#define FFF_ASSERT_ANY(FN, ...) _FFF_ASSERT_TRUE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "No calls made to '"#FN"("#__VA_ARGS__")'")
+#define FFF_ASSERT_NONE(FN, ...)  _FFF_ASSERT_FALSE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "At least one call made to '"#FN"("#__VA_ARGS__")'")
+
+/* Argument assertions (Internal) */
+#define _FFF_ASSERT_ARG(FN, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG((VAL), FFF_LAST_ARG_VAL(FN, ARG_IDX), #FN" parameter value mismatch at ARG"#ARG_IDX);
+#define _FFF_ASSERT_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG((VAL), FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX),  #FN", call "#CALL_IDX": value mismatch for arg"#ARG_IDX);
+#define _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) ((VAL) == FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX))
+#define _FFF_AND_VERIFY_NTH_CALL_ARG(FN, CALL_IDX, VAL, ARG_IDX) && _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX)
+#define _FFF_VERIFY_NTH_CALL(FN, CALL_IDX, ...)                                \
+  ((CALL_IDX > 0) && ((unsigned int)(CALL_IDX) <= FFF_CALLS(FN))               \
+   PP_PAR_EACH_IDX(_FFF_AND_VERIFY_NTH_CALL_ARG, (FN, CALL_IDX), __VA_ARGS__))
+#define _FFF_VERIFY_ANY_CALL(FN, ...)                                          \
+  ({                                                                           \
+    int verified = 0;                                                          \
+    unsigned int call_idx = FFF_CALLS(FN);                                     \
+    while (call_idx && !verified) {                                            \
+      verified |= _FFF_VERIFY_NTH_CALL(FN, call_idx, __VA_ARGS__);             \
+      call_idx--;                                                              \
+    }                                                                          \
+    verified;                                                                  \
+  })
+
+/* -- END VARIADIC EXTENSIONS -- */
 
 #endif /* FAKE_FUNCTIONS */

@@ -47,6 +47,8 @@ FAKE_VOID_FUNC(__cdecl, voidfunc20, int, int, int, int, int, int, int, int, int,
 FAKE_VALUE_FUNC(int, __cdecl, valuefunc20, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
 #endif
 
+#include "test_cases_assertions_setup.include"
+
 void setup()
 {
     RESET_FAKE(voidfunc1);
@@ -59,10 +61,12 @@ void setup()
     RESET_FAKE(valuefunc3var);
     RESET_FAKE(strlcpy3);
     FFF_RESET_HISTORY();
+    RESET_FAKE_ASSERTIONS();
 }
 
 
 #include "test_cases.include"
+#include "test_cases_assertions.include"
 
 TEST_F(FFFTestSuite, default_constants_can_be_overridden)
 {
@@ -123,6 +127,8 @@ int main()
 
     RUN_TEST(FFFTestSuite, can_capture_upto_20_arguments_correctly);
     RUN_TEST(FFFTestSuite, value_func_can_capture_upto_20_arguments_correctly);
+
+#include "test_cases_assertions_runner.include"
 
     printf("\n-------------\n");
     printf("Complete\n");

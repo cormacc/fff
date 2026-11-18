@@ -37,6 +37,12 @@ add_dependencies(fff fff_h)
 # Add an interface library for fff.h
 target_include_directories(fff INTERFACE ${CMAKE_CURRENT_LIST_DIR})
 
+# fff.h needs __VA_OPT__, which MSVC supports only with its conforming preprocessor
+target_compile_options(fff INTERFACE
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/Zc:preprocessor>
+  $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:preprocessor>
+)
+
 option(FFF_UNIT_TESTING "If enabled, fff tests will be compiled and run" OFF)
 
 if(FFF_UNIT_TESTING)
