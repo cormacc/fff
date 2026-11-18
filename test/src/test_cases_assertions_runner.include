@@ -1,0 +1,38 @@
+    /* Variadic extensions: the guards match test_cases_assertions.include */
+    RUN_TEST(FFFTestSuite, assert_calls_assertion_valid_given_match);
+    RUN_TEST(FFFTestSuite, assert_calls_assertion_invalid_when_underestimated);
+    RUN_TEST(FFFTestSuite, assert_calls_assertion_invalid_when_overestimated);
+    RUN_TEST(FFFTestSuite, assert_called_assertion_valid_when_called_once);
+    RUN_TEST(FFFTestSuite, assert_called_assertion_invalid_when_not_called);
+    RUN_TEST(FFFTestSuite, assert_called_assertion_invalid_when_called_more_than_once);
+    RUN_TEST(FFFTestSuite, assert_not_called_assertion_valid_when_not_called);
+    RUN_TEST(FFFTestSuite, assert_not_called_assertion_invalid_when_called_once);
+    RUN_TEST(FFFTestSuite, assert_not_called_assertion_invalid_when_called_more_than_once);
+
+#if PP_HAS_VA_OPT
+#if !defined(_MSC_VER)
+    RUN_TEST(FFFTestSuite, variadic_return_values_should_set_return_val_given_single_value);
+    RUN_TEST(FFFTestSuite, variadic_return_values_should_set_return_sequence_given_multiple_values);
+    RUN_TEST(FFFTestSuite, variadic_return_values);
+    RUN_TEST(FFFTestSuite, variadic_return_values_no_array_name_collisions_when_called_repeatedly);
+    RUN_TEST(FFFTestSuite, variadic_return_values_no_assertion_given_single_value);
+    RUN_TEST(FFFTestSuite, variadic_return_values_assertion_valid_given_value_sequence);
+#endif
+#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
+    RUN_TEST(FFFTestSuite, variadic_return_values_assertion_invalid_given_0_length_sequence);
+#endif
+    RUN_TEST(FFFTestSuite, assert_call_assertion_valid_when_all_args_specified_and_matched);
+    RUN_TEST(FFFTestSuite, assert_call_assertion_valid_when_some_args_specified_and_matched);
+    RUN_TEST(FFFTestSuite, assert_call_assertion_invalid_when_called_more_than_once);
+    RUN_TEST(FFFTestSuite, assert_call_assertion_invalid_given_arg_mismatch);
+    RUN_TEST(FFFTestSuite, assert_nth_call_assertion_valid_given_matching_args);
+    RUN_TEST(FFFTestSuite, assert_nth_call_assertion_invalid_given_arg_mismatch);
+    RUN_TEST(FFFTestSuite, assert_last_call_assertion_valid_given_multiple_calls);
+    RUN_TEST(FFFTestSuite, assert_last_call_assertion_invalid_given_previous_call_args);
+#ifdef __GNUC__
+    RUN_TEST(FFFTestSuite, assert_any_call_assertion_valid_given_any_match);
+    RUN_TEST(FFFTestSuite, assert_any_call_assertion_invalid_given_no_match);
+    RUN_TEST(FFFTestSuite, assert_no_call_assertion_invalid_given_any_match);
+    RUN_TEST(FFFTestSuite, assert_no_call_assertion_valid_given_no_match);
+#endif
+#endif /* PP_HAS_VA_OPT */

@@ -2,6 +2,7 @@
 # fakegen.rb
 # A simple code generator to create some C macros for defining test fake functions
 
+require_relative './pp_iterators.rb'
 
 $cpp_output = true
 $MAX_ARGS = 20
@@ -658,6 +659,106 @@ def output_macro_counting_shortcuts(has_calling_conventions)
   MACRO_COUNTING
 end
 
+# ------  Variadic extensions ------ #
+# The accessors and call count assertions work with any preprocessor. The macros that
+# count or iterate over variadic arguments use the pp_iterators.rb macros, which need
+# __VA_OPT__, so fff.h defines them only when the probe finds it. The core fake macros
+# above keep their own argument counting, so fff.h stays usable without __VA_OPT__.
+def output_variadic_extensions
+  ppiter = PPIterators.new
+  putd <<-'EOH'
+/* -- VARIADIC EXTENSIONS -- */
+
+/* Accessors (Public API) */
+#define FFF(FN) FN##_fake
+#define FFF_CALLS(FN) FFF(FN).call_count
+#define FFF_LAST_ARG_VAL(FN, ARG_IDX) FFF(FN).arg##ARG_IDX##_val
+#define FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX) FFF(FN).arg##ARG_IDX##_history[CALL_IDX-1]
+#define FFF_RET(FN) FFF(FN).return_val
+
+/* Assertion hook: define _FFF_ASSERT_EQ_MSG before you include fff.h to report through your test framework */
+#ifndef _FFF_ASSERT_EQ_MSG
+#include <assert.h>
+#include <stdio.h>
+#define _FFF_ASSERT_EQ_MSG(expected, actual, message) do { \
+        if((expected)!=(actual)) {printf("%s\n", message);} \
+        assert((expected)==(actual)); \
+} while(0)
+#endif
+
+#ifndef _FFF_ASSERT_EQ
+#define _FFF_ASSERT_EQ(expected, actual) _FFF_ASSERT_EQ_MSG(expected, actual, "Expected " #expected " / Got " #actual)
+#endif
+
+/* The ternary gives int operands, so C needs no <stdbool.h> and MSVC gives no bool/int warning */
+#define _FFF_ASSERT_TRUE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG(((COND) ? 1 : 0), 1, MSG)
+#define _FFF_ASSERT_FALSE_MSG(COND, MSG) _FFF_ASSERT_EQ_MSG(((COND) ? 1 : 0), 0, MSG)
+
+/* Call count assertions (Public API) */
+#define FFF_ASSERT_CALLS(FN, COUNT) _FFF_ASSERT_EQ_MSG((unsigned int)(COUNT), FFF_CALLS(FN), #FN " called incorrect number of times")
+#define FFF_ASSERT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 1);
+#define FFF_ASSERT_NOT_CALLED(FN)  FFF_ASSERT_CALLS(FN, 0);
+
+EOH
+  putd ppiter.va_opt_probe
+  putd "#if PP_HAS_VA_OPT"
+  putd ppiter.embed_macros(require_va_opt: false)
+  putd <<-'EOH'
+/* FFF_RETURN (Public API). It needs typeof (GCC, Clang) or decltype (C++). */
+#define FFF_RETURN(...)                                             \
+  _FFF_SEQ_DEF(__VA_ARGS__); if(PP_NARG(__VA_ARGS__) == 2) {FFF_RETURN_VAL(__VA_ARGS__, 0);} else {_FFF_RETURN_SEQ(PP_HEAD(__VA_ARGS__));}
+#ifdef _MSC_VER
+#define _FFF_RET_TYPE(FN) decltype(FFF_RET(FN))
+#else
+#define _FFF_RET_TYPE(FN) __typeof__(FFF_RET(FN))
+#endif
+#define _FFF_SEQ(FN) PP_CAT(FN, __LINE__)
+#define _FFF_SEQ_DEF(FN, ...) _FFF_RET_TYPE(FN) _FFF_SEQ(FN)[] = {__VA_ARGS__}
+#define _FFF_SEQ_LEN(FN) (sizeof(_FFF_SEQ(FN))/sizeof(FFF_RET(FN)))
+#define FFF_RETURN_VAL(FN, ...) FFF_RET(FN) = PP_HEAD(__VA_ARGS__)
+#define _FFF_RETURN_SEQ(FN) SET_RETURN_SEQ(FN, _FFF_SEQ(FN), _FFF_SEQ_LEN(FN)); \
+    _FFF_ASSERT_TRUE_MSG(FFF(FN).return_val_seq_len>0, "No return values specified")
+
+/* Argument assertions (Public API) */
+#define FFF_ASSERT(FN, ...) \
+  FFF_ASSERT_CALLS(FN, 1); \
+  PP_PAR_EACH_IDX(_FFF_ASSERT_ARG, (FN), __VA_ARGS__)
+
+#define FFF_ASSERT_NTH(FN, CALL_IDX, ...) \
+  _FFF_ASSERT_TRUE_MSG(CALL_IDX>0, "Invalid call index -- expected >0, got " #CALL_IDX); \
+  _FFF_ASSERT_TRUE_MSG(FFF_CALLS(FN) >= (unsigned int)(CALL_IDX), #FN " not called " #CALL_IDX " times"); \
+  PP_PAR_EACH_IDX(_FFF_ASSERT_HISTORICAL_ARG, (FN, CALL_IDX), __VA_ARGS__)
+
+#define FFF_ASSERT_LAST(FN, ...) FFF_ASSERT_NTH(FN, FFF_CALLS(FN), __VA_ARGS__)
+
+/* FFF_ASSERT_ANY and FFF_ASSERT_NONE use a GCC statement expression (GCC, Clang) */
+#define FFF_ASSERT_ANY(FN, ...) _FFF_ASSERT_TRUE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "No calls made to '"#FN"("#__VA_ARGS__")'")
+#define FFF_ASSERT_NONE(FN, ...)  _FFF_ASSERT_FALSE_MSG(_FFF_VERIFY_ANY_CALL(FN, __VA_ARGS__), "At least one call made to '"#FN"("#__VA_ARGS__")'")
+
+/* Argument assertions (Internal) */
+#define _FFF_ASSERT_ARG(FN, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG((VAL), FFF_LAST_ARG_VAL(FN, ARG_IDX), #FN" parameter value mismatch at ARG"#ARG_IDX);
+#define _FFF_ASSERT_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) _FFF_ASSERT_EQ_MSG((VAL), FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX),  #FN", call "#CALL_IDX": value mismatch for arg"#ARG_IDX);
+#define _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX) ((VAL) == FFF_NTH_ARG_VAL(FN, CALL_IDX, ARG_IDX))
+#define _FFF_AND_VERIFY_NTH_CALL_ARG(FN, CALL_IDX, VAL, ARG_IDX) && _FFF_VERIFY_HISTORICAL_ARG(FN, CALL_IDX, VAL, ARG_IDX)
+#define _FFF_VERIFY_NTH_CALL(FN, CALL_IDX, ...)                                \
+  ((CALL_IDX > 0) && ((unsigned int)(CALL_IDX) <= FFF_CALLS(FN))               \
+   PP_PAR_EACH_IDX(_FFF_AND_VERIFY_NTH_CALL_ARG, (FN, CALL_IDX), __VA_ARGS__))
+#define _FFF_VERIFY_ANY_CALL(FN, ...)                                          \
+  ({                                                                           \
+    int verified = 0;                                                          \
+    unsigned int call_idx = FFF_CALLS(FN);                                     \
+    while (call_idx && !verified) {                                            \
+      verified |= _FFF_VERIFY_NTH_CALL(FN, call_idx, __VA_ARGS__);             \
+      call_idx--;                                                              \
+    }                                                                          \
+    verified;                                                                  \
+  })
+#endif /* PP_HAS_VA_OPT */
+
+/* -- END VARIADIC EXTENSIONS -- */
+EOH
+end
+
 def output_c_and_cpp(has_calling_conventions)
   license
   include_guard {
@@ -667,6 +768,7 @@ def output_c_and_cpp(has_calling_conventions)
     output_internal_helper_macros
     yield
     output_macro_counting_shortcuts(has_calling_conventions)
+    output_variadic_extensions
   }
 end
 

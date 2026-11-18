@@ -6,6 +6,8 @@
 
 DEFINE_FFF_GLOBALS;
 
+#include "test_cases_assertions_setup.include"
+
 void setup()
 {
     RESET_FAKE(voidfunc1);
@@ -19,10 +21,12 @@ void setup()
     RESET_FAKE(strlcpy3);
 
     FFF_RESET_HISTORY();
+    RESET_FAKE_ASSERTIONS();
 }
 
 
 #include "test_cases.include"
+#include "test_cases_assertions.include"
 
 
 int main()
@@ -75,6 +79,8 @@ int main()
 
     RUN_TEST(FFFTestSuite, can_capture_upto_20_arguments_correctly);
     RUN_TEST(FFFTestSuite, value_func_can_capture_upto_20_arguments_correctly);
+
+#include "test_cases_assertions_runner.include"
 
     printf("\n-------------\n");
     printf("Complete\n");
