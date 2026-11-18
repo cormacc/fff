@@ -1,0 +1,35 @@
+# Temporary: compare upstream/master and the variadic extensions on each OS, with unit tests on.
+name: va_opt matrix
+on: push
+jobs:
+  test:
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [138b94157d2880c218ab28817ab1a15e185ab0c2]
+        config:
+          - { name: ubuntu, os: ubuntu-latest, flags: "" }
+          - { name: macos, os: macos-latest, flags: "" }
+          - { name: msvc, os: windows-latest, flags: "" }
+          - { name: msvc-zc-preprocessor, os: windows-latest, flags: "/Zc:preprocessor" }
+    name: ${{ matrix.config.name }} @ ${{ matrix.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+      - name: Configure
+        env:
+          CFLAGS: ${{ matrix.config.flags }}
+          CXXFLAGS: ${{ matrix.config.flags }}
+        run: cmake -B build -DFFF_UNIT_TESTING=ON
+      - name: Build
+        run: cmake --build build --config Debug
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
+      - name: Count tests that ran
+        shell: bash
+        run: |
+          d=build/test; [ -d build/test/Debug ] && d=build/test/Debug
+          for t in c_test c_test_no_va_opt c_global_test; do echo "COUNT $t: $("$d/$t" | grep -c 'Running ')"; done
+          for t in cpp_test cpp_test_no_va_opt cpp_global_test; do echo "COUNT $t: $("$d/$t" | grep -o '[0-9]* tests from [0-9]* test suite ran')"; done
