@@ -1,0 +1,43 @@
+# Temporary: build and run the tests on each OS (not for upstream).
+name: va_opt matrix
+on: push
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build -DFFF_UNIT_TESTING=ON
+      - run: cmake --build build --config Debug
+      - run: ctest --test-dir build -C Debug --output-on-failure
+      - name: Count tests that ran
+        shell: bash
+        run: |
+          d=build/test; [ -d build/test/Debug ] && d=build/test/Debug
+          for t in c_test c_global_test; do echo "COUNT $t: $("$d/$t" | grep -c 'Running ')"; done
+          for t in cpp_test cpp_global_test; do echo "COUNT $t: $("$d/$t" | grep -o '[0-9]* tests from [0-9]* test suite ran')"; done
+  msvc-without-zc-preprocessor:
+    # Expect the #error from fff.h when the legacy MSVC preprocessor is used
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: 'Control: compile with /Zc:preprocessor (must succeed)'
+        shell: pwsh
+        run: |
+          cl -nologo -Zc:preprocessor -c -I. .github/workflows/smoke.c
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "ZC_OK"
+      - name: 'Compile without /Zc:preprocessor (must fail with the __VA_OPT__ #error)'
+        shell: pwsh
+        run: |
+          cl -nologo -c -I. .github/workflows/smoke.c *> out.txt
+          $rc = $LASTEXITCODE
+          Get-Content out.txt
+          if ($rc -eq 0) { Write-Output "compiled without /Zc:preprocessor"; exit 1 }
+          if (-not (Select-String -Path out.txt -Pattern "#error|C1189" -Quiet)) { Write-Output "no #error"; exit 1 }
+          "EXPECTED_FAILURE_OK"
+          exit 0
